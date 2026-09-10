@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-page-node-id="iFRBDuZpqYnsIiB9wP9hMK">
+<head data-page-node-id="5t4u8RpyIg73AewzzCgOXc">
+<meta charset="UTF-8" data-page-node-id="mqtTGTAUfRTWU6NzSLUZOH">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" data-page-node-id="y7x9FR1WbA4FuQBZtmD1CI">
+<title>24 点挑战 · 网页小游戏</title>
+<style>
+/* ==========================================================================
+   全局样式：纸牌主题（纸白底 + 扑克红/黑），布局全部居中，响应式适配
+   ========================================================================== */
+:root{
+  --bg:#f4efe4;            /* 页面底色：米纸色 */
+  --panel:#fffdf8;         /* 卡片/面板：暖白 */
+  --ink:#1d1a17;           /* 主文字：墨黑 */
+  --muted:#8a8378;         /* 次要文字 */
+  --red:#d3392f;           /* 扑克红（主色） */
+  --green:#2e9e6b;         /* 正确/成功 */
+  --amber:#e8940f;         /* 提示/警告 */
+  --line:rgba(29,26,23,.14);
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:"PingFang SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  display:flex;justify-content:center;align-items:flex-start;
+  padding:16px 12px 32px;
+  /* 桌面端加一层淡淡的斜纹底，增强纸质感 */
+  background-image:repeating-linear-gradient(45deg,rgba(29,26,23,.02) 0 2px,transparent 2px 14px);
+}
+.app{width:min(94vw,560px)}
+
+/* ---------- 通用组件 ---------- */
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:0 6px 18px rgba(29,26,23,.06)}
+.btn{
+  display:inline-block;border:1.5px solid var(--ink);background:var(--panel);color:var(--ink);
+  font-size:16px;font-weight:600;padding:12px 22px;border-radius:999px;cursor:pointer;
+  transition:transform .12s ease,box-shadow .12s ease,background .12s;user-select:none;
+}
+.btn:active{transform:scale(.96)}
+.btn-primary{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 4px 0 #a3271f}
+.btn-primary:active{box-shadow:0 1px 0 #a3271f;transform:translateY(3px)}
+.btn-ghost{border-color:var(--line);font-weight:500;font-size:14px;padding:9px 16px;color:var(--muted)}
+.btn-ghost:active{background:rgba(29,26,23,.06)}
+
+/* ==========================================================================
+   首页（开始界面）
+   ========================================================================== */
+#home{text-align:center}
+.logo{
+  width:110px;height:150px;margin:6px auto 14px;background:var(--panel);
+  border:1.5px solid var(--ink);border-radius:14px;position:relative;
+  box-shadow:6px 6px 0 rgba(211,57,47,.25);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transform:rotate(-3deg);animation:floaty 3.2s ease-in-out infinite;
+}
+.logo .big{font-size:44px;font-weight:700;line-height:1}
+.logo .suit-tl,.logo .suit-br{position:absolute;font-size:18px}
+.logo .suit-tl{top:8px;left:12px}
+.logo .suit-br{bottom:8px;right:12px;transform:rotate(180deg)}
+@keyframes floaty{0%,100%{transform:rotate(-3deg) translateY(0)}50%{transform:rotate(-2deg) translateY(-6px)}}
+h1{font-size:30px;letter-spacing:2px;margin-bottom:4px}
+.subtitle{color:var(--muted);font-size:14px;margin-bottom:18px}
+.howto{text-align:left;font-size:14px;line-height:1.9;color:#4c463d;margin:14px 0 18px}
+.howto b{color:var(--red)}
+.howto .keys{background:rgba(29,26,23,.05);border-radius:8px;padding:2px 7px;font-size:12.5px}
+.diff-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.diff-btn{
+  display:flex;justify-content:space-between;align-items:center;gap:8px;text-align:left;
+  border:1.5px solid var(--line);border-radius:12px;background:var(--panel);
+  padding:13px 16px;cursor:pointer;font-size:15px;transition:border-color .15s,transform .12s;
+}
+.diff-btn:hover{border-color:var(--red)}
+.diff-btn:active{transform:scale(.98)}
+.diff-btn .d-name{font-weight:700;font-size:16px}
+.diff-btn .d-desc{color:var(--muted);font-size:12.5px;margin-top:2px}
+.diff-btn .go{color:var(--red);font-weight:700;font-size:18px}
+.foot-tip{color:var(--muted);font-size:12px;margin-top:10px}
+
+/* ==========================================================================
+   游戏页
+   ========================================================================== */
+[hidden]{display:none !important}
+
+/* 顶部记分板 */
+.hud{display:flex;flex-wrap:wrap;gap:6px;justify-content:space-between;margin-bottom:10px}
+.chip{
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;
+  padding:6px 13px;font-size:13px;color:var(--muted);white-space:nowrap;
+}
+.chip b{color:var(--ink);font-size:15px;margin-left:2px}
+.chip.lives{color:var(--red);font-size:15px;letter-spacing:2px}
+
+/* 倒计时条 */
+.timer{height:10px;background:rgba(29,26,23,.1);border-radius:999px;overflow:hidden;margin-bottom:16px}
+.timer-fill{height:100%;width:100%;background:var(--green);border-radius:999px;transition:width .1s linear,background .3s}
+.timer-fill.warn{background:var(--amber)}
+.timer-fill.danger{background:var(--red)}
+
+/* 目标提示 */
+.goal{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:14px}
+.goal .target{
+  width:58px;height:58px;border-radius:12px;background:var(--red);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;
+  box-shadow:3px 3px 0 rgba(29,26,23,.18);
+}
+.goal .tip{font-size:13px;color:var(--muted);text-align:left;line-height:1.6}
+
+/* 牌桌：当前可用的数字牌 */
+.table-label{font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px;letter-spacing:2px}
+.pool{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-bottom:16px;min-height:104px}
+.card{
+  width:78px;height:104px;border-radius:12px;border:1.5px solid var(--ink);
+  background:var(--panel);cursor:pointer;position:relative;flex:0 0 auto;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:transform .15s ease,border-color .15s,box-shadow .15s;
+  box-shadow:3px 4px 0 rgba(29,26,23,.14);animation:pop .25s ease;
+}
+@keyframes pop{from{transform:scale(.6);opacity:0}to{transform:scale(1);opacity:1}}
+.card .val{font-size:30px;font-weight:800;line-height:1.1}
+.card .expr{font-size:10.5px;color:var(--muted);max-width:66px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .c-suit{position:absolute;font-size:14px}
+.card .tl{top:6px;left:9px}
+.card .br{bottom:6px;right:9px;transform:rotate(180deg)}
+.card.red{color:var(--red)}
+.card.sel{transform:translateY(-8px);border-color:var(--red);box-shadow:0 8px 14px rgba(211,57,47,.25)}
+.card.shake{animation:shake .4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}50%{transform:translateX(7px)}75%{transform:translateX(-5px)}}
+
+/* 运算符键盘 */
+.ops{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px}
+.opbtn{
+  border:1.5px solid var(--line);background:var(--panel);border-radius:12px;
+  font-size:20px;font-weight:700;padding:11px 0;cursor:pointer;transition:all .12s;color:var(--ink);
+}
+.opbtn:active{transform:scale(.93)}
+.opbtn.active{background:var(--ink);color:#fff;border-color:var(--ink)}
+.opbtn.mini{font-size:13px;font-weight:600;letter-spacing:1px}
+
+/* 计算过程记录 */
+.log{
+  background:rgba(29,26,23,.045);border-radius:10px;padding:9px 13px;min-height:38px;
+  font-size:13px;color:#5d574c;line-height:1.7;margin-bottom:12px;
+}
+.log .ln b{color:var(--red)}
+
+/* 底部功能按钮 */
+.tools{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+
+/* ==========================================================================
+   答题回顾区：已完成的题目集中列在页面下方，与上方答题区用虚线框明显区分
+   ========================================================================== */
+.review{
+  margin-top:20px;background:rgba(29,26,23,.035);border:1.5px dashed var(--line);
+  border-radius:12px;padding:12px 14px;
+}
+.review h3{
+  font-size:12.5px;color:var(--muted);letter-spacing:3px;font-weight:600;
+  text-align:center;margin-bottom:4px;
+}
+.review .rv-empty{color:var(--muted);font-size:12.5px;text-align:center;padding:10px 0}
+
+/* 规则开关（首页） */
+.rule-switch{margin-top:10px;font-size:12.5px;color:var(--muted);text-align:left}
+.rule-switch label{display:flex;gap:6px;align-items:flex-start;cursor:pointer;line-height:1.5}
+.rule-switch input{margin-top:2px;accent-color:var(--accent,#4a7dff)}
+
+/* 暂停遮罩：盖住游戏画面并模糊背景，点击可恢复 */
+#pauseVeil{
+  position:fixed;inset:0;z-index:60;
+  background:rgba(247,244,238,.86);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+}
+.pv-panel{text-align:center;padding:34px 52px;border-radius:18px;
+  background:rgba(255,255,255,.9);box-shadow:0 10px 40px rgba(29,26,23,.14)}
+.pv-icon{font-size:44px;line-height:1}
+.pv-title{font-size:20px;font-weight:800;margin-top:10px}
+.pv-sub{font-size:13px;color:var(--muted);margin-top:6px}
+.rv-item{
+  display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline;
+  padding:8px 2px;border-bottom:1px solid rgba(29,26,23,.07);font-size:13px;
+}
+.rv-item:last-child{border-bottom:none}
+.rv-q{font-weight:700;color:var(--muted);min-width:36px}
+.rv-cards{font-weight:700;letter-spacing:2px}
+.rv-tag{font-size:11.5px;padding:1px 8px;border-radius:999px;color:#fff;white-space:nowrap}
+.tag-ok{background:var(--green)}
+.tag-bad{background:var(--red)}
+.tag-skip{background:var(--amber)}
+.rv-line{width:100%;font-size:12.5px;color:#4c463d;line-height:1.6;word-break:break-all}
+.rv-line b{color:var(--ink)}
+.rv-line .lab{color:var(--muted)}
+.rv-gain{font-weight:700}
+.gain-plus{color:var(--green)}
+.gain-zero{color:var(--muted)}
+
+/* 多解分析：一条记录下并列展示多种解法，推荐解用绿色左边框突出 */
+.rv-sols{width:100%;display:flex;flex-direction:column;gap:5px;margin-top:4px}
+.rv-sol{
+  background:rgba(29,26,23,.04);border-left:3px solid var(--line);border-radius:6px;
+  padding:6px 9px;font-size:12.5px;line-height:1.65;word-break:break-all;
+}
+.rv-sol.best{border-left-color:var(--green);background:rgba(46,158,107,.08)}
+.rv-sol.mine{border-left-color:var(--red)}
+.rv-sol b{color:var(--ink)}
+.rv-sol-desc{color:var(--muted);font-size:12px;margin-top:2px}
+.rv-note{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.6}
+
+/* 浮动提示 toast */
+#toast{
+  position:fixed;left:50%;bottom:9%;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#fff;padding:10px 20px;border-radius:999px;font-size:14px;
+  opacity:0;pointer-events:none;transition:all .25s;z-index:50;max-width:86vw;text-align:center;
+}
+#toast.show{opacity:.95;transform:translateX(-50%) translateY(0)}
+
+/* ==========================================================================
+   结算浮层（胜负判定与结束提示）
+   ========================================================================== */
+/* 结算浮层：卡片停靠顶部悬浮显示，不全屏遮挡——
+   游戏画面与下方「答题回顾」区保持可见、可滚动，供玩家逐题核对。
+   容器不拦截点击（pointer-events:none），仅卡片本身可交互。 */
+#overlay{
+  position:fixed;top:52px;left:0;right:0;
+  display:flex;justify-content:center;align-items:flex-start;
+  z-index:45;padding:0 12px;pointer-events:none;
+}
+.result{width:min(92vw,420px);text-align:center;animation:rise .3s ease;
+  pointer-events:auto;box-shadow:0 10px 40px rgba(29,26,23,.22)}
+.r-review-tip{font-size:12px;color:var(--muted);margin-bottom:14px}
+@keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:translateY(0);opacity:1}}
+.result .r-title{font-size:30px;font-weight:800;margin-bottom:4px}
+.result.win .r-title{color:var(--green)}
+.result.lose .r-title{color:var(--red)}
+.result .r-sub{color:var(--muted);font-size:14px;margin-bottom:18px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:20px}
+.stat{background:rgba(29,26,23,.05);border-radius:12px;padding:12px}
+.stat .s-label{font-size:12px;color:var(--muted)}
+.stat .s-val{font-size:24px;font-weight:800;margin-top:2px}
+.result .r-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* 胜利彩带：随机生成一串彩色小纸片（纯 CSS 动画，不拦截点击） */
+.confetti{position:fixed;top:-14px;width:9px;height:16px;border-radius:2px;pointer-events:none;z-index:60;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(720deg);opacity:.4}}
+
+/* ==========================================================================
+   响应式：小屏（手机）调整
+   ========================================================================== */
+@media (max-width:480px){
+  body{padding:10px 8px 24px}
+  .panel{padding:16px 14px}
+  h1{font-size:26px}
+  .card{width:72px;height:96px}
+  .card .val{font-size:26px}
+  .ops{grid-template-columns:repeat(4,1fr)}
+  .opbtn.mini{font-size:12px}
+  .chip{padding:5px 10px;font-size:12px}
+}
+@media (max-width:360px){
+  .card{width:64px;height:88px}
+  .pool{gap:8px}
+}
+</style>
+</head>
+<body data-page-node-id="Iegg318aYGxYjK8hr0Re8n">
+<div class="app" data-page-node-id="jb58KmYBQm6AyV8Hkga89y">
+
+  <!-- ======================= 首页：开始界面与操作说明 ======================= -->
+  <section id="home" data-page-node-id="DtsXnrERsy2e6MQRMF9TOD">
+    <div class="logo" data-page-node-id="PCAPGQ1fuLJv9nMvP7kGdC">
+      <span class="suit-tl" data-page-node-id="1AlkOFTKqCUYfQwOCkSn8m">♠</span>
+      <span class="big" data-page-node-id="3rjzzSbCC1x6mx6zyeEgGt">24</span>
+      <span class="suit-br" data-page-node-id="eZo3GggfU02PBX7q3ngAt5">♠</span>
+    </div>
+    <h1 data-page-node-id="pRM2EWn6pbdnLIZEu1FHDO">24 点挑战</h1>
+    <p class="subtitle" data-page-node-id="Hi2JSr3DRcJmgGiMi3DhSp">心算 + 运算顺序 + 一点运气 · 共 10 题一轮</p>
+
+    <div class="panel" data-page-node-id="JIv3cjwbxQLVLSYqtELL9f">
+      <div class="howto" data-page-node-id="jtbhehaLMNvCCYpIvkHAsC">
+        <b data-page-node-id="h5YjT1QdcnC0xuw47FyJBo">玩法：</b>每题发 4 张牌，用 <b data-page-node-id="xAKzc0SUh4Xdpvl28fsEko">+ − × ÷</b> 和括号把牌面算成 <b data-page-node-id="CAeAGE90NgiIERqIjMNeAb">24</b>，每张牌用且只用一次。<br data-page-node-id="2nW0d0WJxatEpE03TMJudQ">
+        <b data-page-node-id="7zBsUDG4lmwxWwpoVyLLeU">操作：</b>依次点选 <span class="keys" data-page-node-id="G9xiEDO4Q5YXioKCqzq6ig">牌 → 运算符 → 牌</span>，两张牌会合成一张新牌；合成剩一张且等于 24 即过关。<br data-page-node-id="IA5a63J2a3pc8982HCieaz">
+        <b data-page-node-id="SXNZdxamAXiMwE88J5X7jY">胜负：</b>答满 10 题<b data-page-node-id="hdeMEnW96VrFm6OK0eZFjB">挑战成功</b>；3 颗心（答错超时/跳过扣除）用完则<b data-page-node-id="Z34xEFElwlWnXW7sWYRdYW">挑战失败</b>。<br data-page-node-id="mKzHOV4MbnwrDjseVfVH8i">
+        <b data-page-node-id="U8pCPdYxou6LjrIfbrGSim">计分：</b>基础 100 分 × 难度系数 × 时间加成 × 连击倍率；用提示得分打折，答错一次 −10 分。<br data-page-node-id="Ple09WNagJJhpTdoWPBuh0">
+        <b data-page-node-id="Ab10SR6e21YDGqlB9ASPAl">键盘：</b><span class="keys" data-page-node-id="sdj0NGgT0deQIRzGQJNMwg">1-4</span> 选牌 · <span class="keys" data-page-node-id="gkkrzwiLsRt522108AGx6R">+ − * /</span> 选运算符 · <span class="keys" data-page-node-id="yMpg3w8buZpl7BgrHnVU6O">退格</span> 撤销 · <span class="keys" data-page-node-id="6jl17vH6V5AMCUx2p8wVDu">H</span> 提示 · <span class="keys" data-page-node-id="iS2iFbMO1wQOEYiZgUFFNH">S</span> 跳过
+      </div>
+
+      <!-- 难度选择：三个按钮分别对应不同限时 / 计分系数 / 牌面范围 -->
+      <div class="diff-list" id="diffList" data-page-node-id="3jqqNxqvAGFgDqKA41Wg9w"></div>
+
+      <!-- 规则开关：整数模式（默认）要求除法整除、中间结果全为整数 -->
+      <div class="rule-switch">
+        <label><input type="checkbox" id="intOnlyChk" checked>
+          整数模式：除法必须整除，所有中间结果均为整数（如 9 4 8 6 只认 (9-8)×4×6，不认 9×(4-8÷6)）
+        </label>
+      </div>
+
+      <div class="foot-tip" data-page-node-id="yaAdROyBWLcCRwHFnpDWRJ">点击难度卡片即可开始 · 数据仅保存在本页内存中</div>
+    </div>
+  </section>
+
+  <!-- ============================ 游戏主界面 ============================ -->
+  <section id="game" hidden data-page-node-id="QKNObZSvMAOIVEBHeH331A">
+    <!-- 顶部记分板：题号 / 得分 / 连击 / 生命 -->
+    <div class="hud" data-page-node-id="SHVgSBF6GoSQulHSgURgcE">
+      <span class="chip" data-page-node-id="2RCn8yEyGua5zf7tYsVB6I">第 <b id="qNum" data-page-node-id="lHoFIJooKhsWw5dXMct2Jk">1</b>/10 题</span>
+      <span class="chip" data-page-node-id="44F7OgG38XCpXmOklHuveu">得分 <b id="score" data-page-node-id="Gd1BQQcoUvrEUqdl8v506a">0</b></span>
+      <span class="chip" data-page-node-id="ckFgbCAgkyzclTHhwW6Fmj">连击 <b id="combo" data-page-node-id="hDp2l5qtzWmcPjRdEOshlh">—</b></span>
+      <span class="chip lives" id="lives" data-page-node-id="WmHZCZkNIUEjztQLgbybN6">♥♥♥</span>
+    </div>
+
+    <!-- 倒计时条 -->
+    <div class="timer" data-page-node-id="USmRn8lX86vE03hVosFgs0"><div class="timer-fill" id="timerFill" data-page-node-id="PCnvpzC0BmJEGAv4rNhE0n"></div></div>
+
+    <!-- 目标提示 -->
+    <div class="goal" data-page-node-id="sN0a6Di4kemIaA746OktM0">
+      <div class="target" data-page-node-id="ba5kbMDhWjusLbF6MiDyOQ">24</div>
+      <div class="tip" data-page-node-id="cPJw7OtDAdBKqtkAo1EwKB">把 4 张牌算成 <b data-page-node-id="PhUGiimYZrSR2ccqvdC8zi">24</b><br data-page-node-id="8fR1PDr1JhCG9sjhHXfmmW">点选 牌 → 运算符 → 牌<br><span id="solCountTip"></span></div>
+    </div>
+
+    <!-- 牌桌：当前可参与的数字牌（合成后会更新） -->
+    <div class="table-label" data-page-node-id="qvZc1xQTBSCOfOUPL5fzi1">—— 牌 桌 ——</div>
+    <div class="pool" id="pool" data-page-node-id="FcrCIsERKdBAto4bfPydp9"></div>
+
+    <!-- 运算符与功能键 -->
+    <div class="ops" id="ops" data-page-node-id="jxvCb8XWYbEX3GvVLvvaN5">
+      <button class="opbtn" data-op="+" data-page-node-id="BYC6BodGC3R8hmguHE47YB">+</button>
+      <button class="opbtn" data-op="-" data-page-node-id="1ouiq2RB5R650QnQz2M082">−</button>
+      <button class="opbtn" data-op="*" data-page-node-id="lrCFSc27C4SSENvQQfrC8S">×</button>
+      <button class="opbtn" data-op="/" data-page-node-id="rcDwQb1plQ7KB6iG0Y4rqV">÷</button>
+      <button class="opbtn mini" data-act="undo" data-page-node-id="2NDirW34zEWFrcpUdFuyAm">撤销</button>
+      <button class="opbtn mini" data-act="reset" data-page-node-id="2SFQcqbd3ylOqUdmvWHLYD">重置</button>
+    </div>
+
+    <!-- 计算过程记录 -->
+    <div class="log" id="log" data-page-node-id="rWDciCz03YI95NGZjkqrLZ">还没有开始计算…</div>
+
+    <!-- 辅助功能 -->
+    <div class="tools" data-page-node-id="kJsFpIsB78ZRGgMyV24cJL">
+      <button class="btn btn-ghost" id="btnPause">⏸ 暂停（P）</button>
+      <button class="btn btn-ghost" id="btnHint" data-page-node-id="j7zEPllhBCrL26cS7olD6n">提示（得分 ×0.8）</button>
+      <button class="btn btn-ghost" id="btnAnswer" data-page-node-id="nL4VIC17Z3ycjWxQLh61PU">看答案（本题 0 分）</button>
+      <button class="btn btn-ghost" id="btnSkip" data-page-node-id="hsA3FM2fzLdDWU4PkW9rHL">跳过（−1 心）</button>
+      <button class="btn btn-ghost" id="btnSound" data-page-node-id="Kk3hHgzwqlx6wlcYxJuKmd">音效：开</button>
+      <button class="btn btn-ghost" id="btnQuit" data-page-node-id="urvcqeuMufOEbG3EY7UN0D">回主页</button>
+    </div>
+
+    <!-- 答题回顾区：已作答完毕的题目按顺序集中展示，方便回顾核对 -->
+    <div class="review" id="review">
+      <h3>—— 答 题 回 顾 ——</h3>
+      <div id="reviewList"><div class="rv-empty">答完的题目会按顺序出现在这里</div></div>
+    </div>
+
+    <!-- 暂停遮罩：覆盖整个游戏画面，点击任意处恢复 -->
+    <div id="pauseVeil" hidden>
+      <div class="pv-panel">
+        <div class="pv-icon">⏸</div>
+        <div class="pv-title">游戏已暂停</div>
+        <div class="pv-sub">倒计时已冻结，点击任意处或按 P 继续</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 浮动提示 -->
+  <div id="toast" data-page-node-id="KJayaceDR2UGZ1dGO6MgBT"></div>
+
+  <!-- ======================= 结算浮层：胜负与重新开始 ======================= -->
+  <div id="overlay" hidden data-page-node-id="1t3bUS36B7j594RxA7BKxn">
+    <div class="panel result" id="resultPanel" data-page-node-id="CiJcCJfGVIhVc4cbk3Eg3G">
+      <div class="r-title" id="rTitle" data-page-node-id="cZKso2KAaZCZzP0hhMwwMi">挑战成功！</div>
+      <div class="r-sub" id="rSub" data-page-node-id="ALKNuKyCNxXfrx7wArHvZc">辛苦了，来复盘一下战绩</div>
+      <div class="stats" data-page-node-id="mKtVVuflImiTAznWPmGQ55">
+        <div class="stat" data-page-node-id="OHyRzBAv48x1pgkPUHa4ll"><div class="s-label" data-page-node-id="ZRYyPzV51pCWFr3hN786xr">总得分</div><div class="s-val" id="rScore" data-page-node-id="UUZxvxLXmo0cNHKlxLvMh5">0</div></div>
+        <div class="stat" data-page-node-id="83Ygjgmbb606DFyFDGLd28"><div class="s-label" data-page-node-id="3KoJO1njLc8DfUddmECULy">答对题数</div><div class="s-val" id="rCorrect" data-page-node-id="LHpceRNrOEJVtypfaXaFUa">0/10</div></div>
+        <div class="stat" data-page-node-id="eKc3Bgvu27LNUSiCEi9pxe"><div class="s-label" data-page-node-id="EhQp9oR6aJ0q42GWYZg0hf">最高连击</div><div class="s-val" id="rCombo" data-page-node-id="UfqpsglKHO8EYHvN7eLHJC">0</div></div>
+        <div class="stat" data-page-node-id="ziOUjB5AGmCBoTe8rThXj2"><div class="s-label" data-page-node-id="jhNbbr7sGZlkbdbzYUKW8s">总用时</div><div class="s-val" id="rTime" data-page-node-id="D6HUMwSEYhl6pQZs8x9XPs">0s</div></div>
+      </div>
+      <div class="r-review-tip">↓ 逐题作答记录已保留在下方「答题回顾」区，可滚动核对每题对错与得分</div>
+      <div class="r-btns" data-page-node-id="gWlCSRg5pRnEaXVT7bQwDO">
+        <button class="btn" id="btnRestart" data-page-node-id="vPIkL2jyZFoR136S9gnVz1">再来一局</button>
+        <button class="btn btn-primary" id="btnHome" data-page-node-id="lZaFhDj0raZRpPzlaFf923">结束（回主页）</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+"use strict";
+/* ==========================================================================
+   24 点挑战 —— 单文件网页小游戏
+   模块划分：
+     A. 精确有理数运算（Fraction，避免浮点误差）
+     B. 求解器（穷举可解性 / 解的数量 / 一条参考解）
+     C. 发牌器（按难度保证"必有解"）
+     D. 游戏状态机（选牌 → 运算 → 合成 → 判定）
+     E. 界面渲染与事件绑定（鼠标 / 触屏 / 键盘）
+     F. 计时器、计分、音效、结算
+   ========================================================================== */
+
+/* ------------------------- A. 精确有理数运算 ------------------------- */
+/* 用 {n: 分子, d: 分母} 表示分数并约分，彻底避免 0.333... 这类浮点误差 */
+
+function gcd(a, b){ a = Math.abs(a); b = Math.abs(b); while(b){ const t = a % b; a = b; b = t; } return a || 1; }
+function frac(n, d){
+  d = d === undefined ? 1 : d;
+  if(d < 0){ n = -n; d = -d; }                 // 分母恒为正
+  const g = gcd(n, d);
+  return { n: n / g, d: d / g };
+}
+function fAdd(a, b){ return frac(a.n * b.d + b.n * a.d, a.d * b.d); }
+function fSub(a, b){ return frac(a.n * b.d - b.n * a.d, a.d * b.d); }
+function fMul(a, b){ return frac(a.n * b.n, a.d * b.d); }
+function fDiv(a, b){ if(b.n === 0) return null; return frac(a.n * b.d, a.d * b.n); } // 除以 0 视为非法
+function fIs24(f){ return f.n === 24 && f.d === 1; }
+function fStr(f){ return f.d === 1 ? String(f.n) : f.n + "/" + f.d; }
+
+/* ----------------------------- B. 求解器 ----------------------------- */
+/* 穷举 4 张牌的所有二元运算组合。牌数固定为 4，规模很小，毫秒级完成。
+   返回：{ count: 解的个数（按运算顺序计）, first: 一条参考解的表达式树 }      */
+
+function solveHand(cards, intOnly){
+  /* intOnly=true 时为"整数模式"：每次除法结果必须是整数。
+     由于初始牌全为整数且加减乘不产生分数，只需在除法一步把关，
+     即可保证整棵运算树的中间结果全为整数。 */
+  const items = cards.map((c, i) => ({ f: frac(c), leaf: true, val: c, expr: String(c), op: null }));
+  let count = 0, first = null;
+
+  function rec(list){
+    if(list.length === 1){
+      if(fIs24(list[0].f)){
+        count++;
+        if(!first) first = list[0];          // 记下第一条参考解（表达式树）
+      }
+      return;
+    }
+    const n = list.length;
+    for(let i = 0; i < n; i++){
+      for(let j = i + 1; j < n; j++){        // i<j 一对牌
+        const rest = [];
+        for(let k = 0; k < n; k++) if(k !== i && k !== j) rest.push(list[k]);
+        const a = list[i], b = list[j];
+        for(const op of ["+", "-", "*", "/"]){
+          if(op === "+") rec(rest.concat(mk(a, b, op, fAdd(a.f, b.f))));
+          if(op === "*") rec(rest.concat(mk(a, b, op, fMul(a.f, b.f))));
+          if(op === "-"){                    // 减法两个方向都要试
+            rec(rest.concat(mk(a, b, op, fSub(a.f, b.f))));
+            rec(rest.concat(mk(b, a, op, fSub(b.f, a.f))));
+          }
+          if(op === "/"){                    // 除法两个方向，且排除除以 0
+            const d1 = fDiv(a.f, b.f); if(d1 && (!intOnly || d1.d === 1)) rec(rest.concat(mk(a, b, op, d1)));
+            const d2 = fDiv(b.f, a.f); if(d2 && (!intOnly || d2.d === 1)) rec(rest.concat(mk(b, a, op, d2)));
+          }
+        }
+      }
+    }
+  }
+
+  /* 合成新节点：按优先级决定是否补括号，保证表达式字符串最简。
+     同时保留左右子树（_l/_r/_op），供"提示"功能回放解题步骤 */
+  const PREC = { "+":1, "-":1, "*":2, "/":2 };
+  function mk(a, b, op, f){
+    const pa = PREC[op];
+    let ls = a.expr, rs = b.expr;
+    if(a.op && PREC[a.op] < pa) ls = "(" + ls + ")";
+    if(b.op && (PREC[b.op] < pa || (PREC[b.op] === pa && (op === "-" || op === "/")))) rs = "(" + rs + ")";
+    return { f, leaf: false, expr: ls + opStr(op) + rs, op, _l: a, _r: b, _op: op };
+  }
+  function opStr(op){ return op === "*" ? "×" : op === "/" ? "÷" : op; }
+
+  rec(items);
+  return { count, first };
+}
+
+/* 从参考解的表达式树中找出"第一步该算什么"：
+   即最靠内、左右孩子都是叶子牌的那次运算（最内层括号） */
+function findFirstStep(node){
+  function walk(n){
+    if(n.leaf) return null;                       // 叶子没有运算
+    const fromLeft = walk(n._l);                  // 优先报告左边的最内层
+    if(fromLeft) return fromLeft;
+    if(n._l.leaf && n._r.leaf){                   // 两边都是原始牌 → 这就是第一步
+      return valLabel(n._l.val) + " " + opSym(n._op) + " " +
+             valLabel(n._r.val) + " ＝ " + fStr(n.f);
+    }
+    return walk(n._r);
+  }
+  return walk(node);
+}
+/* 收集参考解用到的运算符（用于第二级提示） */
+function collectOps(node){
+  const set = new Set();
+  (function walk(n){ if(!n.leaf){ set.add(opSym(n._op)); walk(n._l); walk(n._r); } })(node);
+  return Array.from(set).join(" 和 ");
+}
+/* 叶子牌值 → 牌面字符（A/J/Q/K） */
+function valLabel(v){ return ({ 1:"A", 11:"J", 12:"Q", 13:"K" })[v] || String(v); }
+
+/* ----------------------------- C. 发牌器 ----------------------------- */
+/* 随机发牌并用求解器验证，直到符合难度要求（保证每题必定有解）          */
+
+const SUITS = ["♠", "♥", "♦", "♣"];
+const RED_SUITS = { "♥": 1, "♦": 1 };
+
+function dealHand(cfg, intOnly){
+  for(let t = 0; t < 800; t++){
+    const cards = [];
+    for(let i = 0; i < 4; i++) cards.push(1 + Math.floor(Math.random() * cfg.maxCard));
+    const res = solveHand(cards, intOnly);
+    if(res.count === 0) continue;                       // 当前规则下无解，重发
+    if(cfg.hardMode && res.count > 5 && t < 700) continue; // 困难模式偏好"少解"的题
+    if(!cfg.hardMode && res.count < cfg.minSol && t < 700) continue; // 简单模式偏好"多解"的题
+    return { cards, res };
+  }
+  /* 兜底：从"已知当前规则下有解"的经典牌面里挑一道。
+     注意 3 3 8 8 只有分数解，整数模式下不可用作兜底 */
+  for(const fallback of [[9,4,8,6],[1,2,3,4],[2,3,4,6],[5,5,5,1],[3,3,8,8]]){
+    const res = solveHand(fallback, intOnly);
+    if(res.count > 0) return { cards: fallback, res };
+  }
+  return { cards: [1, 2, 3, 4], res: solveHand([1, 2, 3, 4], intOnly) };
+}
+
+/* --------------------------- 难度配置表 ------------------------------ */
+const DIFFS = {
+  easy:   { key:"easy",   name:"简单", limit:90, k:1.0, maxCard:10, minSol:8, hardMode:false,
+            desc:"限时 90 秒 · 计分 ×1.0 · 牌面 1-10 · 解法较多" },
+  normal: { key:"normal", name:"普通", limit:60, k:1.3, maxCard:13, minSol:3, hardMode:false,
+            desc:"限时 60 秒 · 计分 ×1.3 · 牌面 1-13 · 标准规则" },
+  hard:   { key:"hard",   name:"困难", limit:45, k:2.0, maxCard:13, minSol:0, hardMode:true,
+            desc:"限时 45 秒 · 计分 ×2.0 · 偏爱少解题" },
+};
+const TOTAL_Q = 10;        // 每轮题数
+const MAX_LIVES = 3;       // 初始生命
+
+/* -------------------------- D. 游戏状态机 ---------------------------- */
+const G = {
+  diff: null,            // 当前难度配置
+  intOnly: true,         // 整数模式：除法必须整除、所有中间结果均为整数（默认开启）
+  qIndex: 0,             // 当前第几题（0 起）
+  score: 0,              // 总分
+  combo: 0,              // 当前连击
+  maxCombo: 0,           // 最高连击
+  correct: 0,            // 答对题数
+  lives: MAX_LIVES,      // 剩余生命
+  startTime: 0,          // 本轮开始时间
+  pool: [],              // 牌桌上的当前牌（含合成的中间结果）
+  initCards: [],         // 本题初始 4 张牌
+  answerTree: null,      // 本题参考解
+  undoStack: [],         // 撤销栈（保存牌桌快照）
+  logLines: [],          // 计算过程记录
+  sel: { a: -1, op: null }, // 当前选择：a=牌下标, op=运算符
+  hintLevel: 0,          // 提示等级 0/1/2（1=×0.8, 2=×0.6, 看答案=0 分）
+  usedAnswer: false,     // 本题是否看过答案
+  errors: 0,             // 本题答错次数
+  qStart: 0,             // 本题开始时间
+  deadline: 0,           // 本题截止时间
+  timerId: null,         // 倒计时句柄
+  locked: false,         // 判定中锁住交互
+  paused: false,         // 暂停中：冻结倒计时并屏蔽交互
+  pauseRemain: 0,        // 暂停瞬间剩余的毫秒数（恢复时用它重设 deadline）
+  sound: true,           // 音效开关
+  records: [],           // 答题回顾：已完成题目的档案（题号/牌面/我的答案/参考解/得分）
+};
+
+/* ==========================================================================
+   多解分析引擎
+   1) allSolutions：穷举全部"本质不同"的解 —— 用规范式 canon 归一
+      交换律（a+b 与 b+a）与结合律（(a+b)-c 与 a+(b-c)）视为同一解
+   2) analyzeSolution：给每条解打特点标签 + 优缺点 + 适用场景 + 简易度评分
+   3) 推荐规则：优先"全程整数 > 结构对称 > 直觉套路 > 表达式短"
+   ========================================================================== */
+
+/* 规范式工具：把加减链/乘除链拉平成带符号的项再排序 */
+function _splitTop(s, sep){
+  const parts = []; let buf = "", depth = 0;
+  for(const ch of s){
+    if(ch === "(" || ch === "[") depth++;
+    else if(ch === ")" || ch === "]") depth--;
+    if(ch === sep && depth === 0){ parts.push(buf); buf = ""; } else buf += ch;
+  }
+  parts.push(buf);
+  return parts;
+}
+function sumTerms(c){
+  if(c.startsWith("S[") && c.endsWith("]"))
+    return _splitTop(c.slice(2, -1), "|").map(t => [t[0] === "+" ? 1 : -1, t.slice(1)]);
+  return [[1, c]];                                   // 非加减链：整体视为 +1 项
+}
+function prodTerms(c){
+  if(c.startsWith("P[") && c.endsWith("]"))
+    return _splitTop(c.slice(2, -1), "|").map(t => t[0] === "~" ? [-1, t.slice(1)] : [1, t]);
+  return [[1, c]];                                   // "~" 前缀表示该项在分母上
+}
+/* 合成两个节点的规范式（游戏过程与求解器共用，保证口径一致） */
+function canonFor(a, b, op){
+  if(op === "+" || op === "-"){
+    const t = sumTerms(a.canon).concat(sumTerms(b.canon).map(p => [op === "+" ? p[0] : -p[0], p[1]]));
+    return "S[" + t.map(x => (x[0] > 0 ? "+" : "-") + x[1]).sort().join("|") + "]";
+  }
+  const t = prodTerms(a.canon).concat(prodTerms(b.canon).map(p => [op === "*" ? p[0] : -p[0], p[1]]));
+  return "P[" + t.map(x => (x[0] > 0 ? "" : "~") + x[1]).sort().join("|") + "]";
+}
+
+/* 枚举一副牌的所有本质不同解（4 张牌规模很小，毫秒级） */
+function allSolutions(cards, intOnly){
+  /* intOnly=true：整数模式，只保留每步除法都整除的解（详见 solveHand 注释） */
+  const items = cards.map(c => ({ f: frac(c), leaf: true, val: c, expr: String(c), op: null, canon: "#" + c }));
+  const found = {};
+  function rec(list){
+    if(list.length === 1){
+      if(fIs24(list[0].f) && !found[list[0].canon]) found[list[0].canon] = list[0];
+      return;
+    }
+    const n = list.length;
+    for(let i = 0; i < n; i++) for(let j = i + 1; j < n; j++){
+      const rest = [];
+      for(let k = 0; k < n; k++) if(k !== i && k !== j) rest.push(list[k]);
+      const a = list[i], b = list[j];
+      rec(rest.concat(mk(a, b, "+", fAdd(a.f, b.f))));
+      rec(rest.concat(mk(a, b, "*", fMul(a.f, b.f))));
+      rec(rest.concat(mk(a, b, "-", fSub(a.f, b.f))));
+      rec(rest.concat(mk(b, a, "-", fSub(b.f, a.f))));     // 减法两个方向
+      const d1 = fDiv(a.f, b.f); if(d1 && (!intOnly || d1.d === 1)) rec(rest.concat(mk(a, b, "/", d1)));
+      const d2 = fDiv(b.f, a.f); if(d2 && (!intOnly || d2.d === 1)) rec(rest.concat(mk(b, a, "/", d2)));  // 除法两个方向
+    }
+  }
+  function mk(a, b, op, f){
+    return { f, leaf: false, expr: joinExpr(a, b, op), op, canon: canonFor(a, b, op), _l: a, _r: b, _op: op };
+  }
+  rec(items);
+  return Object.keys(found).map(k => found[k]);
+}
+
+/* 分析一条解：特点标签 / 优缺点 / 适用场景 / 简易度评分（分越低越好走） */
+const EASY_SET = { "3,8": 1, "4,6": 1, "2,12": 1, "1,24": 1 };   // 直觉因数对
+
+function analyzeSolution(sol){
+  let hasFrac = false, hasNeg = false, height = 0;
+  (function walk(n){
+    if(n.leaf) return 0;
+    const h = 1 + Math.max(walk(n._l), walk(n._r));
+    if(n.f.d !== 1) hasFrac = true;                  // 中间结果出现非整数
+    if(n.f.n < 0) hasNeg = true;                     // 中间结果出现负数
+    if(h > height) height = h;
+    return h;
+  })(sol);
+  const top = sol.op;
+  let easy = false;
+  /* "经典凑对"只认两张原始牌直接相乘（如手里的 3 和 8），合成物的乘积不算 */
+  if(top === "*" && sol._l.leaf && sol._r.leaf){
+    easy = !!EASY_SET[[sol._l.val, sol._r.val].sort((x, y) => x - y).join(",")];
+  }
+
+  const tags = [];
+  tags.push(hasFrac ? "分数技巧" : "全程整数");
+  if(easy) tags.push("经典凑对");
+  if(height <= 2 && !hasFrac) tags.push("两两分组");
+  if(height >= 3) tags.push("层层递进");
+  if(hasNeg) tags.push("含负数中间值");
+  if(top === "/") tags.push("除法收口");
+  else if(top === "-") tags.push("作差收口");
+  else if(top === "+") tags.push("加法拼凑");
+  else if(top === "*" && !easy) tags.push("乘法收口");
+
+  let pros, cons, scene;
+  if(hasFrac){
+    pros = "能破整数路线走不通的死局";
+    cons = "中间结果是分数，心算负担大、易错";
+    scene = "牌面凑不出整数中间值时的唯一出路";
+  }else if(easy){
+    pros = "命中 3×8 / 4×6 等直觉套路，几乎一眼解";
+    cons = "依赖牌面恰好凑得出因数对";
+    scene = "竞速抢时间，或给初学者做示范";
+  }else if(height <= 2){
+    pros = "两两分组、步骤少、不易错";
+    cons = "要先看出合适的分组方式";
+    scene = "常规答题，稳扎稳打";
+  }else if(top === "-" || top === "/"){
+    pros = "思路灵活，能绕开乘法死角";
+    cons = "收口方向容易绕弯，需要倒推规划";
+    scene = "乘法凑不到 24 时换道而行";
+  }else{
+    pros = "按序推进，每一步都可口算验证";
+    cons = "括号层级较多，要先想清运算顺序";
+    scene = "牌面分散、无现成因数时的通用解法";
+  }
+
+  /* 简易度评分：分数技巧与深层嵌套加罚，直觉套路与短表达式加分；
+     两两分组（顶层两侧都是合成式）结构最对称，额外减分奖励 */
+  let score = sol.expr.length * 0.2;
+  if(hasFrac) score += 40;
+  if(hasNeg) score += 8;
+  score += 12 * Math.max(0, height - 2);
+  if(top === "/") score += 22;
+  else if(top === "-") score += 18;
+  else if(top === "+") score += 8;
+  else if(top === "*") score += easy ? 0 : 10;
+  if(height <= 2 && !sol._l.leaf && !sol._r.leaf) score -= 3;
+
+  return { hasFrac, easy, height, top, tags, pros, cons, scene, score };
+}
+
+/* 推荐理由（针对简易度评分最低的那条解） */
+function recommendReason(a){
+  let r = a.hasFrac ? "必须借分数中间值破局，而这是代价最小的一条" : "全程整数运算、不绕弯";
+  if(a.height <= 2) r += "、两两分组结构清晰";
+  if(a.easy) r += "，还落在 3×8 / 4×6 这类直觉套路里";
+  return "推荐它：" + r + "，综合脑力成本最低。";
+}
+
+/* 唯一解的原因说明 */
+function uniqueNote(a){
+  return a.hasFrac
+    ? "本题只有 1 条本质不同的解：四张牌没法先用整数加减乘凑出通往 24 的中间值，必须先除出分数再收口（中间过程必然出现非整数），穷举全部运算组合后确认没有第二条路。"
+    : "本题只有 1 条本质不同的解：穷举全部加减乘除组合后，其余路线的结果都会偏离 24，没有可替代的思路。";
+}
+
+/* --------------------------- 答题回顾区 ------------------------------ */
+/* 每题结束后归档一条记录，并在页面下方按答题顺序渲染，方便回顾核对 */
+
+function recordQuestion(ok, tag, gain, userExpr, userCanon){
+  G.records.push({
+    q: G.qIndex + 1,                                   // 题号（本题尚未递增）
+    cards: G.initCards.map(v => ({1:"A",11:"J",12:"Q",13:"K"}[v] || String(v))).join(" "),
+    user: userExpr || "未作答",
+    answer: G.answerTree ? G.answerTree.expr : "—",
+    ok, tag, gain,
+    usedAnswer: G.usedAnswer,
+    solHtml: buildSolHtml(userCanon),                  // 多解分析（预渲染好的 HTML）
+  });
+  renderRecords();
+}
+
+/* 生成本题的多解分析 HTML：推荐解置顶并说明理由；唯一解则解释原因 */
+function buildSolHtml(userCanon){
+  if(!G.solList || !G.solList.length) return "";
+  const total = G.solList.length;
+  if(total === 1) return '<div class="rv-note">' + uniqueNote(G.solList[0].a) + "</div>";
+
+  /* 默认展示简易度前 4 名；若玩家的解法排在 4 名之外，单独换入展示 */
+  let idxs = [0, 1, 2, 3].filter(i => i < total);
+  const mineIdx = userCanon ? G.solList.findIndex(x => x.s.canon === userCanon) : -1;
+  if(mineIdx >= 4) idxs = [0, 1, 2, mineIdx];
+
+  let html = '<div class="rv-sols">' + idxs.map(i => {
+    const x = G.solList[i], a = x.a;
+    const mine = i === mineIdx;
+    const head = i === 0 ? "★ 推荐" : "解法 " + (i + 1);
+    return '<div class="rv-sol' + (i === 0 ? " best" : "") + (mine ? " mine" : "") + '">'
+      + "<b>" + head + "：</b>" + x.s.expr + " ＝ 24"
+      + (mine ? " <b>（← 你的解法" + (i === 0 ? "，正是推荐路线" : "，与推荐殊途同归") + "）</b>" : "")
+      + '<div class="rv-sol-desc">' + a.tags.join(" · ")
+      + "｜优：" + a.pros + "｜缺：" + a.cons + "｜场景：" + a.scene + "</div></div>";
+  }).join("");
+  if(total > 4) html += '<div class="rv-note">另有 ' + (total - idxs.length) + " 种本质不同的变体解法，未一一列出。</div>";
+  html += '<div class="rv-note">' + recommendReason(G.solList[0].a) + "</div></div>";
+  return html;
+}
+
+function renderRecords(){
+  const box = $("reviewList");
+  if(!box) return;
+  if(G.records.length === 0){
+    box.innerHTML = '<div class="rv-empty">答完的题目会按顺序出现在这里</div>';
+    return;
+  }
+  box.innerHTML = G.records.map(r => {
+    const cls = r.ok ? "tag-ok" : (r.tag === "答对" ? "tag-ok" : /超时|跳过/.test(r.tag) ? "tag-skip" : "tag-bad");
+    const note = r.usedAnswer ? '<span class="rv-tag tag-skip">看答案</span>' : "";
+    const gainCls = r.gain > 0 ? "gain-plus" : "gain-zero";
+    const gainTxt = r.gain > 0 ? "+" + r.gain : "0";
+    return (
+      '<div class="rv-item">' +
+        '<span class="rv-q">#' + r.q + "</span>" +
+        '<span class="rv-cards">' + r.cards + "</span>" +
+        '<span class="rv-tag ' + cls + '">' + r.tag + "</span>" + note +
+        '<span class="rv-gain ' + gainCls + '">' + gainTxt + " 分</span>" +
+        '<div class="rv-line"><span class="lab">我的答案：</span><b>' + r.user + "</b></div>" +
+        '<div class="rv-line"><span class="lab">正确答案：</span><b>' + r.answer + " ＝ 24</b></div>" +
+        r.solHtml +
+      "</div>"
+    );
+  }).join("");
+}
+
+/* ----------------------------- E. 渲染 ------------------------------- */
+const $ = (id) => document.getElementById(id);
+
+function showScreen(id){
+  $("home").hidden = id !== "home";
+  $("game").hidden = id !== "game";
+}
+
+/* 渲染牌桌 */
+function renderPool(){
+  const box = $("pool");
+  box.innerHTML = "";
+  G.pool.forEach((it, idx) => {
+    const el = document.createElement("button");
+    el.className = "card" + (RED_SUITS[it.suit] ? " red" : "") + (G.sel.a === idx ? " sel" : "");
+    el.dataset.idx = idx;
+    el.innerHTML =
+      '<span class="c-suit tl">' + it.suit + "</span>" +
+      '<span class="val">' + cardLabel(it) + "</span>" +
+      '<span class="expr">' + (it.expr.length > 12 ? it.expr.slice(0, 12) + "…" : it.expr) + "</span>" +
+      '<span class="c-suit br">' + it.suit + "</span>";
+    el.addEventListener("click", () => onCardClick(idx));
+    box.appendChild(el);
+  });
+}
+
+/* 牌面显示：叶子牌显示 A/J/Q/K，合成牌显示当前数值 */
+function cardLabel(it){
+  if(it.leaf){
+    return { 1:"A", 11:"J", 12:"Q", 13:"K" }[it.val] || String(it.val);
+  }
+  return fStr(it.f);
+}
+
+/* 渲染顶部记分板 */
+function renderHud(){
+  $("qNum").textContent = Math.min(G.qIndex + 1, TOTAL_Q);
+  $("score").textContent = G.score;
+  $("combo").textContent = G.combo > 0 ? "x" + Math.min(1 + 0.1 * G.combo, 2).toFixed(1) : "—";
+  $("lives").textContent = "♥".repeat(G.lives) + "♡".repeat(MAX_LIVES - G.lives);
+}
+
+/* 渲染计算过程记录 */
+function renderLog(){
+  const el = $("log");
+  if(G.logLines.length === 0){ el.textContent = "还没有开始计算…"; return; }
+  el.innerHTML = G.logLines.map(l => '<div class="ln">' + l + "</div>").join("");
+  el.scrollTop = el.scrollHeight;
+}
+
+/* 浮动提示 */
+let toastTimer = null;
+function toast(msg){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 1600);
+}
+
+/* --------------------------- 交互：选牌与运算 -------------------------- */
+
+/* 点击运算符按钮 */
+function onOpClick(op){
+  if(G.locked) return;
+  if(G.sel.a < 0){ toast("先点选一张牌，再选运算符"); return; }
+  G.sel.op = op;
+  renderPool(); renderOps();
+}
+
+/* 点击牌：无选择时选中它；已有 a+op 时尝试与它合成 */
+function onCardClick(idx){
+  if(G.locked || G.paused) return;
+  if(G.sel.a < 0 || (G.sel.a >= 0 && !G.sel.op)){
+    G.sel = { a: idx, op: null };
+    renderPool(); renderOps();
+    return;
+  }
+  if(idx === G.sel.a){ G.sel = { a: -1, op: null }; renderPool(); renderOps(); return; } // 再点取消
+  combine(G.sel.a, idx, G.sel.op);
+}
+
+/* 核心：把 pool[i] 与 pool[j] 用 op 合成一张新牌 */
+function combine(i, j, op){
+  if(G.locked || G.paused) return;                   // 暂停/判定中禁止合成（双保险）
+  const a = G.pool[i], b = G.pool[j];
+  let f;
+  if(op === "/"){
+    /* 除法单独处理：fDiv 遇到除以 0 会返回 null，先拦截再继续 */
+    f = fDiv(a.f, b.f);
+    if(!f){ toast("不能除以 0，换一个运算试试"); G.sel = { a:-1, op:null }; renderOps(); return; }
+    /* 整数模式：除法必须整除（如 48÷2=24 合规，8÷6=4/3 不合规） */
+    if(G.intOnly && f.d !== 1){
+      toast("整数模式下 " + a.expr + "÷" + b.expr + " 不能整除，此步无效");
+      G.sel = { a:-1, op:null }; renderOps(); return;
+    }
+  }else{
+    /* 加减乘查映射表调用（注意：除法不在表内，若混在这里会拿到 undefined 而崩溃） */
+    const fn = { "+": fAdd, "-": fSub, "*": fMul }[op];
+    f = fn(a.f, b.f);
+  }
+  pushUndo();                                        // 合成前先存快照，支持撤销
+  const expr = joinExpr(a, b, op);
+  G.pool = G.pool.filter((_, k) => k !== i && k !== j);
+  G.pool.push({ f, leaf: false, expr, op, canon: canonFor(a, b, op), suit: "★" });
+  G.logLines.push("<b>" + a.expr + " " + opSym(op) + " " + b.expr + " = " + fStr(f) + "</b>");
+  G.sel = { a: -1, op: null };
+  beep(G.sound ? 660 : 0, 0.05);
+  renderPool(); renderOps(); renderLog();
+
+  if(G.pool.length === 1) judge();                   // 只剩一张牌 → 自动判定
+}
+
+/* 表达式拼接：按优先级自动补括号（与设计方案一致） */
+function joinExpr(a, b, op){
+  const PREC = { "+":1, "-":1, "*":2, "/":2 };
+  const pa = PREC[op];
+  let ls = a.expr, rs = b.expr;
+  if(a.op && PREC[a.op] < pa) ls = "(" + ls + ")";
+  if(b.op && (PREC[b.op] < pa || (PREC[b.op] === pa && (op === "-" || op === "/")))) rs = "(" + rs + ")";
+  return ls + opSym(op) + rs;
+}
+function opSym(op){ return op === "*" ? "×" : op === "/" ? "÷" : op; }
+
+/* 撤销：回退到上一次合成前 */
+function undo(){
+  if(G.locked || G.paused || G.undoStack.length === 0) return;
+  G.pool = G.undoStack.pop();
+  G.logLines.pop();
+  G.sel = { a: -1, op: null };
+  renderPool(); renderOps(); renderLog();
+}
+
+/* 重置本题牌桌（不扣分，鼓励探索） */
+function resetTable(){
+  if(G.locked) return;
+  startPool();
+  toast("牌桌已重置");
+}
+
+function pushUndo(){
+  /* 快照必须保留 f: {n,d} 结构（直接恢复即可当分数用），并带上规范式 canon */
+  G.undoStack.push(G.pool.map(it => ({
+    f: { n: it.f.n, d: it.f.d }, leaf: it.leaf, val: it.val,
+    expr: it.expr, op: it.op, suit: it.suit, canon: it.canon,
+  })));
+}
+
+/* --------------------------- 判定与流程流转 --------------------------- */
+
+/* 剩一张牌时判定对错（加锁防止重复触发） */
+function judge(){
+  if(G.locked || G.pool.length !== 1) return;
+  const it = G.pool[0];
+  if(fIs24(it.f)){
+    G.locked = true;
+    onCorrect();
+  }else{
+    onWrong();
+  }
+}
+
+/* 答对：计分 → 庆祝 → 下一题或胜利结算 */
+function onCorrect(){
+  stopTimer();
+  const elapsed = (Date.now() - G.qStart) / 1000;
+  const limit = G.diff.limit;
+  const timeBonus = 1 + Math.max(0, (limit - elapsed) / limit) * 0.5;  // 时间加成，最高 ×1.5
+  const comboMul = Math.min(1 + 0.1 * G.combo, 2);                      // 连击倍率，最高 ×2.0
+  const hintMul = G.usedAnswer ? 0 : ({ 0:1, 1:0.8, 2:0.6 })[G.hintLevel]; // 提示衰减
+  const gain = Math.round(100 * G.diff.k * timeBonus * comboMul * hintMul);
+  G.score += gain;
+  G.combo++;
+  G.maxCombo = Math.max(G.maxCombo, G.combo);
+  G.correct++;
+  renderHud();
+  recordQuestion(true, "答对", gain, G.pool[0].expr, G.pool[0].canon);   // 归档到答题回顾区
+  toast("答对！" + fStr(G.pool[0].f) + " ＝ 24，+" + gain + " 分");
+  beep(G.sound ? 784 : 0, 0.09); setTimeout(() => beep(G.sound ? 1046 : 0, 0.12), 90);
+  setTimeout(() => nextQuestion(), 1000);
+}
+
+/* 答错：−10 分 + 抖动，恢复牌桌继续尝试（不扣心） */
+function onWrong(){
+  G.locked = true;                                    // 恢复前锁住交互，防止连点出错
+  G.errors++;
+  G.score = Math.max(0, G.score - 10);
+  G.combo = 0;
+  renderHud();
+  toast("结果是 " + fStr(G.pool[0].f) + "，不是 24（−10 分，可重试）");
+  beep(G.sound ? 196 : 0, 0.18);
+  const box = $("pool");
+  box.classList.add("shake");
+  setTimeout(() => box.classList.remove("shake"), 420);
+  setTimeout(() => { startPool(); G.locked = false; }, 500);  // 恢复初始 4 张牌，重新算
+}
+
+/* 超时或跳过：−1 心并亮出答案 */
+function loseLife(reason){
+  stopTimer();
+  G.combo = 0;
+  G.lives--;
+  renderHud();
+  /* 归档本题：若已合成出一张牌则记录该结果，否则记"未作答" */
+  const mine = (G.pool.length === 1) ? G.pool[0].expr : "未作答";
+  const mineCanon = (G.pool.length === 1) ? G.pool[0].canon : null;
+  recordQuestion(false, reason.includes("超时") ? "超时" : "跳过", 0, mine, mineCanon);
+  const ans = G.answerTree ? G.answerTree.expr : "—";
+  toast(reason + "参考解：" + ans + " ＝ 24");
+  beep(G.sound ? 165 : 0, 0.25);
+  if(G.lives <= 0){ setTimeout(() => endGame(false), 1200); }
+  else{ setTimeout(() => nextQuestion(), 1400); }
+}
+
+/* 下一题；题数用完则胜利结算 */
+function nextQuestion(){
+  G.qIndex++;
+  if(G.qIndex >= TOTAL_Q){ endGame(true); return; }
+  loadQuestion();
+}
+
+/* 加载一道新题 */
+function loadQuestion(){
+  const hand = dealHand(G.diff, G.intOnly);
+  G.initCards = hand.cards;
+  G.answerTree = hand.res.first;
+  /* 多解分析：按当前规则枚举全部本质不同的解，按简易度升序排列（第 0 条即推荐解） */
+  G.solList = allSolutions(hand.cards, G.intOnly)
+    .map(s => ({ s, a: analyzeSolution(s) }))
+    .sort((x, y) => x.a.score - y.a.score);
+  const tip = $("solCountTip");
+  if(tip) tip.textContent = G.solList.length > 1
+    ? "本题共有 " + G.solList.length + " 种" + (G.intOnly ? "整数" : "") + "解法，答完可在回顾区对比"
+    : G.solList.length === 1
+      ? "本题是唯一解题——看看你能不能找到那条路"
+      : "本题在" + (G.intOnly ? "整数" : "经典") + "规则下无解";
+  G.hintLevel = 0; G.usedAnswer = false; G.errors = 0;
+  G.logLines = []; G.undoStack = []; G.sel = { a:-1, op:null }; G.locked = false;
+  startPool();
+  G.qStart = Date.now();
+  G.deadline = G.qStart + G.diff.limit * 1000;
+  G.paused = false; G.pauseRemain = 0;                 // 新题开始时确保不在暂停态
+  $("pauseVeil").hidden = true;
+  $("btnPause").textContent = "⏸ 暂停（P）";
+  renderHud(); renderLog(); renderRecords();   // 回顾区保持可见，随答题进度增长
+  startTimer();
+}
+
+/* 用初始 4 张牌重建牌桌（发牌花色随机） */
+function startPool(){
+  G.pool = G.initCards.map(v => ({
+    f: frac(v), leaf: true, val: v, expr: String(v), op: null,
+    canon: "#" + v,                                   // 叶子牌规范式：#数值
+    suit: SUITS[Math.floor(Math.random() * 4)],
+  }));
+  G.undoStack = []; G.sel = { a:-1, op:null };
+  renderPool(); renderOps();
+}
+
+/* ------------------------------- 计时器 ------------------------------ */
+function startTimer(){
+  stopTimer();
+  updateTimer();
+  G.timerId = setInterval(updateTimer, 100);
+}
+function stopTimer(){ if(G.timerId){ clearInterval(G.timerId); G.timerId = null; } }
+function updateTimer(){
+  if(G.paused) return;                                 // 暂停时不动倒计时
+  const remain = Math.max(0, G.deadline - Date.now());
+  const ratio = remain / (G.diff.limit * 1000);
+  const fill = $("timerFill");
+  fill.style.width = (ratio * 100) + "%";
+  fill.className = "timer-fill" + (ratio < 0.15 ? " danger" : ratio < 0.35 ? " warn" : "");
+  if(remain <= 0 && !G.locked){
+    G.locked = true;
+    loseLife("超时！");
+  }
+}
+
+/* ---------------------------- 暂停 / 继续 ---------------------------- */
+/* 暂停：记录剩余毫秒并停表；继续：用剩余毫秒重设截止时间并重新起表。     */
+/* 暂停期间所有交互入口（点牌/选运算符/撤销/提示/跳过等）都会先检查 paused */
+function togglePause(){
+  if($("game").hidden || G.locked) return;             // 仅游戏进行中且非判定动画时可用
+  if(!G.paused){
+    G.paused = true;
+    G.pauseRemain = Math.max(0, G.deadline - Date.now());  // 冻结剩余时间
+    stopTimer();
+    $("pauseVeil").hidden = false;
+    $("btnPause").textContent = "▶ 继续（P）";
+    beep(G.sound ? 330 : 0, 0.1);
+  }else{
+    G.paused = false;
+    G.deadline = Date.now() + G.pauseRemain;           // 从暂停处继续倒计时
+    G.pauseRemain = 0;
+    $("pauseVeil").hidden = true;
+    $("btnPause").textContent = "⏸ 暂停（P）";
+    startTimer();
+    beep(G.sound ? 660 : 0, 0.08);
+  }
+}
+
+/* ------------------------------- 提示 -------------------------------- */
+/* 提示 1（×0.8）：亮出"第一步该算哪两张牌"                                            */
+/* 提示 2（×0.6）：再亮出参考解的中段结构                                              */
+/* 看答案（0 分）：直接展示完整表达式                                                  */
+function onHint(){
+  if(G.locked || G.paused || !G.answerTree) return;
+  if(G.hintLevel === 0){
+    G.hintLevel = 1;
+    const step = findFirstStep(G.answerTree);
+    toast("提示：先算 " + step + "（得分将 ×0.8）");
+  }else{
+    G.hintLevel = 2;
+    toast("提示：参考解里会出现 " + collectOps(G.answerTree) + "（得分将 ×0.6）");
+  }
+  beep(G.sound ? 880 : 0, 0.07);
+}
+function onAnswer(){
+  if(G.locked || !G.answerTree) return;
+  G.usedAnswer = true;
+  const n = G.solList ? G.solList.length : 1;
+  toast("参考解：" + G.answerTree.expr + " ＝ 24（本题 0 分）"
+    + (n > 1 ? "｜本题共 " + n + " 种解法，回顾区可对比" : "｜本题唯一解"));
+}
+
+/* ------------------------------- 音效 -------------------------------- */
+/* 用 WebAudio 现场合成短音，无需加载任何音频文件 */
+let audioCtx = null;
+function beep(freq, dur){
+  if(!freq) return;
+  try{
+    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+    o.type = "triangle"; o.frequency.value = freq;
+    g.gain.setValueAtTime(0.12, audioCtx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + dur);
+    o.connect(g); g.connect(audioCtx.destination);
+    o.start(); o.stop(audioCtx.currentTime + dur);
+  }catch(e){ /* 音频不可用时静默忽略 */ }
+}
+
+/* ------------------------------ 结算 --------------------------------- */
+/* 游戏结束（胜利/失败两条路径都汇入这里）：
+   不清屏、不遮挡——结算卡片悬浮在顶部，牌桌与下方「答题回顾」区保持
+   可见可滚动，玩家可逐题核对对错与得分。只有点「结束（回主页）」
+   或「再来一局」这两个明确操作才会离开当前画面。 */
+function endGame(win){
+  stopTimer();
+  const secs = Math.round((Date.now() - G.startTime) / 1000);
+  const panel = $("resultPanel");
+  panel.className = "panel result " + (win ? "win" : "lose");
+  $("rTitle").textContent = win ? "挑战成功！" : "挑战失败";
+  $("rSub").textContent = win
+    ? "10 题全部完成，战绩如下，下方可逐题回顾"
+    : "心用完了，成绩已定格，下方可逐题回顾";
+  $("rScore").textContent = G.score;
+  $("rCorrect").textContent = G.correct + "/" + TOTAL_Q;
+  $("rCombo").textContent = G.maxCombo > 0 ? G.maxCombo + " 连" : "—";
+  $("rTime").textContent = secs + "s";
+  $("overlay").hidden = false;
+  if(win){ throwConfetti(); }
+  beep(win ? 1046 : 220, 0.3);
+  /* 稍作停顿后平滑滚动到答题回顾区，方便立刻逐题核对（结算卡片悬浮不受影响） */
+  setTimeout(() => {
+    const rv = $("review");
+    if(rv && typeof rv.scrollIntoView === "function"){
+      try{ rv.scrollIntoView({ behavior: "smooth", block: "start" }); }catch(e){ /* 旧浏览器降级 */ }
+    }
+  }, 900);
+}
+
+/* 胜利彩带：随机生成一串彩色小纸片（纯 CSS 动画） */
+function throwConfetti(){
+  const colors = ["#d3392f", "#2e9e6b", "#e8940f", "#378add", "#993556"];
+  for(let i = 0; i < 36; i++){
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random() * 100 + "vw";
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = (2.2 + Math.random() * 1.8) + "s";
+    c.style.animationDelay = Math.random() * 0.8 + "s";
+    c.style.transform = "rotate(" + Math.random() * 360 + "deg)";
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 5200);
+  }
+}
+
+/* --------------------------- 入口与事件绑定 --------------------------- */
+
+/* 开始一局 */
+function startGame(diffKey){
+  G.diff = DIFFS[diffKey];
+  G.qIndex = 0; G.score = 0; G.combo = 0; G.maxCombo = 0;
+  G.correct = 0; G.lives = MAX_LIVES;
+  G.records = []; G.solList = null;                      // 新一局清空回顾与多解缓存
+  G.startTime = Date.now();
+  $("overlay").hidden = true;
+  showScreen("game");
+  renderRecords();
+  loadQuestion();
+}
+
+/* 返回主页 */
+function goHome(){
+  stopTimer();
+  $("overlay").hidden = true;
+  showScreen("home");
+}
+
+/* 首页难度按钮 */
+function renderDiffList(){
+  const box = $("diffList");
+  box.innerHTML = "";
+  Object.values(DIFFS).forEach(d => {
+    const b = document.createElement("button");
+    b.className = "diff-btn";
+    b.innerHTML = '<span><span class="d-name">' + d.name + '</span><br><span class="d-desc">' +
+                  d.desc + '</span></span><span class="go">›</span>';
+    b.addEventListener("click", () => { beep(G.sound ? 523 : 0, 0.08); startGame(d.key); });
+    box.appendChild(b);
+  });
+}
+
+/* 运算符按钮高亮 */
+function renderOps(){
+  document.querySelectorAll("#ops .opbtn[data-op]").forEach(el => {
+    el.classList.toggle("active", el.dataset.op === G.sel.op);
+  });
+}
+
+/* 键盘控制：1-4 选牌，+ - * / 选运算符，退格撤销，H 提示，S 跳过 */
+function onKeyDown(e){
+  if(!$("game").hidden && $("overlay").hidden){        // 仅在游戏进行中响应
+    const k = e.key;
+    if(k >= "1" && k <= "4"){
+      const idx = parseInt(k, 10) - 1;
+      if(idx < G.pool.length) onCardClick(idx);
+    }else if(k === "+" || k === "-" || k === "*" || k === "/"){
+      onOpClick(k);
+    }else if(k === "Backspace"){ e.preventDefault(); undo(); }
+    else if(k === "Escape"){ resetTable(); }
+    else if(k === "h" || k === "H"){ onHint(); }
+    else if(k === "s" || k === "S"){ if(!G.locked) loseLife("已跳过！"); }
+    else if(k === "Enter" && G.pool.length === 1){ judge(); }
+  }else if(!$("home").hidden && e.key === "Enter"){
+    startGame("normal");
+  }
+}
+
+/* 页面初始化：只绑定一次事件 */
+function init(){
+  renderDiffList();
+
+  /* 运算符与功能按钮 */
+  document.querySelectorAll("#ops .opbtn[data-op]").forEach(el =>
+    el.addEventListener("click", () => onOpClick(el.dataset.op)));
+  document.querySelector('[data-act="undo"]').addEventListener("click", undo);
+  document.querySelector('[data-act="reset"]').addEventListener("click", resetTable);
+  $("btnHint").addEventListener("click", onHint);
+  $("btnAnswer").addEventListener("click", onAnswer);
+  $("btnSkip").addEventListener("click", () => { if(!G.locked && !G.paused) loseLife("已跳过！"); });
+  $("btnPause").addEventListener("click", togglePause);
+  $("pauseVeil").addEventListener("click", togglePause);
+  $("btnSound").addEventListener("click", function(){
+    G.sound = !G.sound;
+    this.textContent = "音效：" + (G.sound ? "开" : "关");
+  });
+  /* 规则开关：整数模式（默认）/ 经典模式（允许分数中间值，如 3 3 8 8） */
+  $("intOnlyChk").addEventListener("change", function(){
+    G.intOnly = this.checked;
+  });
+  $("btnQuit").addEventListener("click", goHome);
+
+  /* 结算按钮：重新开始 / 返回主页 */
+  $("btnRestart").addEventListener("click", () => startGame(G.diff.key));
+  $("btnHome").addEventListener("click", goHome);
+
+  /* 键盘全局监听 */
+  document.addEventListener("keydown", onKeyDown);
+}
+
+/* 浏览器环境才初始化 DOM（便于在 Node 中对纯逻辑做单元自检） */
+if(typeof document !== "undefined"){
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", init);
+  }else{
+    init();
+  }
+}
+
+/* ---------------------- 供 Node 自检导出（浏览器无影响） ---------------------- */
+if(typeof globalThis !== "undefined" && typeof document === "undefined"){
+  globalThis.__test = { frac, fAdd, fSub, fMul, fDiv, fIs24, fStr, solveHand, dealHand };
+}
+</script>
+</body>
+</html>
